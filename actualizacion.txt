@@ -1,0 +1,72 @@
+using System;
+using Microsoft.Data.SqlClient;
+using System.Data;
+
+namespace ConsoleApp2
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string connectionString = "Data Source = ACER\\MSSQLSERVER2; Integrated Security = true; Initial Catalog = Northwind";
+            SqlConnection conn = new SqlConnection(connectionString);
+            {
+                conn.Open();
+                SqlDataAdapter adapter = new SqlDataAdapter(
+                    "SELECT CustomerID, CompanyName, ContactName" + " FROM Customers " +
+                    "WHERE Country = 'USA' " +
+                    "ORDER By CustomerID",
+                    conn
+                    );
+
+                DataSet dataSet = new DataSet();
+                adapter.Fill(dataSet, "Clientes");
+
+                foreach (DataRow fila in dataSet.Tables["Clientes"].Rows)
+
+                {
+                    String nombreCliente = fila.Field<String>("CompanyName");
+                    Console.WriteLine("Cliente: " + nombreCliente);
+                }
+
+                string strUPDATE =
+                    "UPDATE Customers " +
+                    "SET " +
+                    " CustomerID = @CustomerID, " +
+                    "  CompanyName = @CompanyName, " +
+                    " ContactName = @ContactName " +
+                    "WHERE" +
+                    "  CustomerID = @oldCustomerID " +
+                    "AND CompanyName = @oldCompanyName " +
+                    "AND ContactName = @oldContactName";
+
+                adapter.UpdateCommand = new SqlCommand(strUPDATE, conn);
+
+                //Configuracion parametros
+                adapter.UpdateCommand.Parameters.Add("@CustomerID", SqlDbType.NChar, 5, "CustomerID");
+                adapter.UpdateCommand.Parameters.Add("@CompanyName", SqlDbType.NVarChar, 40, "CompanyName");
+                adapter.UpdateCommand.Parameters.Add("@ContactName", SqlDbType.NVarChar, 30, "ContactName");
+                SqlParameter sqlParam;
+                //Configuracion de parametros originales
+                sqlParam = adapter.UpdateCommand.Parameters.Add("@oldCustomerID", SqlDbType.NChar, 5, "CustomerID");
+                sqlParam.SourceVersion = DataRowVersion.Original;
+                sqlParam = adapter.UpdateCommand.Parameters.Add("@oldCompanyName", SqlDbType.NVarChar, 40, "CompanyName");
+                sqlParam.SourceVersion = DataRowVersion.Original;
+                sqlParam = adapter.UpdateCommand.Parameters.Add("@oldContactName", SqlDbType.NVarChar, 30, "ContactName");
+                sqlParam.SourceVersion = DataRowVersion.Original;
+
+                //Cambiamos los datos cargados en memoria
+                Console.WriteLine("Modificando la lista de clientes USA");
+                foreach (DataRow fila in dataSet.Tables["Clientes"].Rows)
+                {
+                    string clienteNombre = "-" + fila.Field<String>("CompanyName");
+                    fila.SetField<String>("CompanyName", clienteNombre);
+                }
+
+                //Enviar a grabar a la base de datos
+                adapter.Update(dataSet, "Clientes");
+            }
+
+        }
+    }
+}
